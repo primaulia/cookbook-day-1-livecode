@@ -14,7 +14,7 @@ class Controller
   def list
     # Ask to the repository all the recipes. The method @cookbok.all gives back an array
     recipes = @cookbook.all
-    # display the recipes. Call the method in my view. I bring recipes as parameters
+    # display the recipes. Call the method display_recipes in my view and pass recipes as parameters
     @view.display_recipes(recipes)
   end
 

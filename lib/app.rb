@@ -1,5 +1,5 @@
-require_relative 'cookbook'    # You need to create this file!
-require_relative 'controller'  # You need to create this file!
+require_relative 'cookbook'
+require_relative 'controller'
 require_relative 'router'
 
 # defining the csv file I want to use

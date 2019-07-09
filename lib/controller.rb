@@ -1,40 +1,102 @@
-require_relative "view"
-require_relative "recipe"
-require "pry-byebug"
+require_relative 'view'
+require_relative 'recipe'
+require 'pry-byebug'
+require 'nokogiri'
+require 'open-uri'
 
 class Controller
   def initialize(cookbook)
-    # create the connection with the view file. At this point the controller is able to comunicate with the view
     @view = View.new
-    # adding the repository in the controller.
-    # At this point the controller is able to comunicate with the repository
     @cookbook = cookbook
   end
 
   def list
-    # Ask to the repository all the recipes. The method @cookbok.all gives back an array
     recipes = @cookbook.all
-    # display the recipes. Call the method display_recipes in my view and pass recipes as parameters
     @view.display_recipes(recipes)
   end
 
   def create
-    # ask the user for the name
-    name = @view.ask_for_name
-    # ask the user for the description
-    description = @view.ask_for_description
-    # create a recipe with the info the user just insert
-    new_recipe = Recipe.new(name, description)
-    # push the new recipe into the repository
+    new_recipe = Recipe.new(
+      name: @view.ask_for_name,
+      description: @view.ask_for_description
+    )
     @cookbook.add_recipe(new_recipe)
   end
 
   def destroy
-    # list all the recipes. So the user can choose.
     list
-    # ask an index to the user
     index = @view.ask_for_index
-    # update the repository removing the recipe with index index
     @cookbook.remove_recipe(index)
   end
+
+  def import
+    # ask the user which ingredient to scrape = @view
+    ingredient = @view.ask_for_ingredient
+    # pass the ingredient to the url
+    url = "http://www.letscookfrench.com/recipes/find-recipe.aspx?aqt=#{ingredient}"
+
+    raw_html = open(url).read
+    doc = Nokogiri::HTML(raw_html)
+
+    scraped_recipes = []
+    # retrieve the top 5 from that url
+    doc.search('.m_contenu_resultat').first(5).each do |element|
+      title = element.search('.m_titre_resultat a').text.strip
+      description = element.search('.m_texte_resultat').text.strip
+
+      # binding.pry if title == "Banana flambé"
+
+      # prep_time = element.search('.m_detail_time div').first.nil? ? element.search('.m_detail_time div').first.text.strip : ''
+
+      unless element.search('.m_detail_time div').first.nil?
+        prep_time = element.search('.m_detail_time div').first.text.strip
+      else
+        prep_time = ''
+      end
+
+      # take a look at the structure of let's cook french
+      # this is the text after scraping this css selector
+      # "Recipe - Main course - Easy - Moderate"
+      # we just need to get the third word => "Easy"
+      difficulty = element.search('.m_detail_recette').text.strip.split(' - ')[2]
+
+      # create new recipe instance
+      scraped_recipes << Recipe.new(
+        name: title,
+        description: description,
+        prep_time: prep_time,
+        difficulty: difficulty
+      )
+    end
+
+    @view.display_recipes(scraped_recipes)
+    # ask the user again which index of the recipe u want to store to ??
+    imported_recipe_index = @view.ask_for_index
+    imported_recipe = scraped_recipes[imported_recipe_index]
+
+    # store back to the cookbook
+    @cookbook.add_recipe(imported_recipe)
+  end
+
+  def mark
+    list
+    index = @view.which_to_mark
+    marked_recipe = @cookbook.find(index)
+
+    @cookbook.mark_as_done(marked_recipe)
+  end
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
